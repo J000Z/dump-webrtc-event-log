@@ -1,25 +1,11 @@
 // extracts rtp packets and dumps then text2pcap format for easy import in wireshark.
 // usage:
-// node rtp.js <file> [incoming|outgoing] | text2pcap -u 10000,20000 - some.pcap
+// node rtp.js <file> | text2pcap -u 10000,20000 - some.pcap
 //
 // rtc_event_log2rtp_dump probably does a better job but requires a webrtc build.
 const fs = require('fs');
 const protobuf = require("protobufjs");
 const logfile = fs.readFileSync(process.argv[2]);
-
-let incoming;
-if (process.argv.length > 3) {
-  switch(process.argv[3]) {
-  case 'incoming':
-    incoming = true;
-    break;
-  case 'outgoing':
-    incoming = false;
-    break;
-  default:
-    console.log('unknown', process.argv[3]);
-  }
-}
 
 function pad(num) {
     const s = '00000000' + num.toString(16);
@@ -35,6 +21,14 @@ function strftime(time) {
     time -= time_s * 1e6;
     return time_h.toString() + ':' + time_m.toString() + ':' + time_s.toString()
         + '.' + ('000000' + time).substr(-6);
+}
+
+function directionStr(incoming) {
+    if (incoming) {
+        return 'I'
+    } else {
+        return 'O'
+    }
 }
 
 let baseTime;
@@ -58,9 +52,7 @@ protobuf.load("rtc_event_log.proto", function(err, root) {
             case 'RTP_EVENT':
                 packet = rawEvent.rtpPacket;
 
-                if (incoming !== undefined && incoming !== packet.incoming) return;
-
-                console.log(strftime(event.timestampUs - baseTime));
+                console.log(directionStr(packet.incoming) + strftime(event.timestampUs - baseTime));
 
                 // dump in rtpdump format.
                 hex = packet.header.toString('hex');
@@ -77,9 +69,8 @@ protobuf.load("rtc_event_log.proto", function(err, root) {
 
             case 'RTCP_EVENT':
                 packet = rawEvent.rtcpPacket;
-                if (incoming !== undefined && incoming !== packet.incoming) return;
 
-                console.log(strftime(event.timestampUs - baseTime));
+                console.log(directionStr(packet.incoming) + strftime(event.timestampUs - baseTime));
 
                 hex = packet.packetData.toString('hex');
                 bytes = '';
