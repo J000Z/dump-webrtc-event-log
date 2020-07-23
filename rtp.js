@@ -44,7 +44,7 @@ let bytes;
 protobuf.load("rtc_event_log.proto", function(err, root) {
     const events = root.lookup('webrtc.rtclog.EventStream').decode(logfile);
     events.stream.forEach(function(rawEvent) {
-        event = JSON.parse(JSON.stringify(rawEvent));
+        const event = JSON.parse(JSON.stringify(rawEvent));
         event.timestampUs = Number(event.timestampUs);
 
         // Use first packet in any direction as base time
@@ -64,11 +64,12 @@ protobuf.load("rtc_event_log.proto", function(err, root) {
                 // dump in rtpdump format.
                 hex = packet.header.toString('hex');
                 bytes = '';
-                for (let j = 0; j < hex.length; j += 2) {
+                let j = 0;
+                for (; j < hex.length; j += 2) {
                     bytes += hex[j] + hex[j+1] + ' ';
                 }
                 // add null payload
-                for (j = 0; j < packet.packetLength; j++) {
+                for (; j < packet.packetLength; j++) {
                     bytes += '00 ';
                 }
                 console.log(pad(0) + ' ' + bytes.trim());
